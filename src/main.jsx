@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import { Analytics } from '@vercel/analytics/react';
 import './styles.css';
 import { CAREERS, CAREER_ORIENTATIONS, getCurriculum, ORIENTATION_KEYS } from './data/curriculum';
 import { emptyProfile, exportState, importState, loadState, saveState } from './lib/storage';
@@ -414,4 +415,9 @@ function CareerPickerModal({ current, onSelect, onClose }) {
 }
 
 
-createRoot(document.getElementById('root')).render(<App />);
+createRoot(document.getElementById('root')).render(
+  <>
+    <App />
+    <Analytics />
+  </>
+);
