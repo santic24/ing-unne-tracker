@@ -115,7 +115,7 @@ El progreso puede exportarse en formato JSON para guardar una copia.
 
 También es posible importar posteriormente ese archivo para recuperar el estado del seguimiento.
 
-## 🛠️ Tecnologías
+## Tecnologías
 
 El proyecto utiliza:
 
