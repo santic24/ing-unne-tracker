@@ -1,6 +1,8 @@
-#  Tracker de Ingeniería · Facultad de Ingeniería UNNE
+#  Trackeador de Ingeniería · Facultad de Ingeniería UNNE
 
 Aplicación web para **seguir, organizar y visualizar el progreso académico** de las carreras de Ingeniería de la Facultad de Ingeniería de la **Universidad Nacional del Nordeste (UNNE)**.
+
+![Vista del Trackeador de Ingeniería](./public/preview.png)
 
 Este proyecto busca transformar el plan de estudios en una herramienta visual e interactiva, que permita saber rápidamente qué materias están aprobadas, cuáles están en curso, qué correlativas faltan y cuánto queda para completar la carrera.
 
@@ -115,7 +117,7 @@ El progreso puede exportarse en formato JSON para guardar una copia.
 
 También es posible importar posteriormente ese archivo para recuperar el estado del seguimiento.
 
-## Tecnologías
+## 🛠️ Tecnologías
 
 El proyecto utiliza:
 
@@ -132,21 +134,22 @@ El proyecto utiliza:
 
 ```text
 ingenieria-unne-tracker/
-├── .gitignore
+│
 ├── index.html
 ├── package.json
 ├── README.md
-├── public/
-│   └── favicon.svg
+│
 └── src/
+    │
     ├── main.jsx
     ├── styles.css
+    │
     ├── data/
     │   └── curriculum.js
+    │
     └── lib/
         └── storage.js
 ```
----
 
 ## Información académica
 
@@ -154,7 +157,7 @@ La información de los planes de estudio y sus correlatividades fue incorporada 
 
 ⚠️ **Importante**: este proyecto no es una aplicación oficial de la Universidad Nacional del Nordeste ni reemplaza la información publicada por la Facultad de Ingeniería.
 
-A fines de tomar decisiones académicas importantes, se recomienda consultar siempre la normativa y los canales oficiales de la Facultad.
+Para decisiones académicas importantes se recomienda consultar siempre la normativa y los canales oficiales de la Facultad.
 
 Desarrollado por **Santino Cuadra**.
 
