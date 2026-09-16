@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Analytics } from '@vercel/analytics/react';
 import './styles.css';
 import { CAREERS, CAREER_ORIENTATIONS, getCurriculum, ORIENTATION_KEYS } from './data/curriculum';
 import { emptyProfile, exportState, importState, loadState, saveState } from './lib/storage';
@@ -94,11 +93,103 @@ function App() {
   }
 
   function patchSubject(code, patch) {
-    setState(s => {
-      const current = s.profiles?.[careerKey] || emptyProfile(DEFAULT_ORIENTATION[careerKey]);
-      return { ...s, profiles: { ...s.profiles, [careerKey]: { ...current, subjects: { ...current.subjects, [code]: { ...current.subjects?.[code], ...patch } } } } };
-    });
+  const subject = byCode[code];
+
+  // bloquea inputs en materias bloqueadas.
+  if (
+    subject &&
+    !getEligibility(subject).unlocked &&
+    ('grade' in patch || 'date' in patch)
+  ) {
+    setToast(`No podés cargar datos de una materia bloqueada`);
+    return;
   }
+
+  const cleanPatch = { ...patch };
+
+  // validación estricta de nota.
+if ('grade' in cleanPatch) {
+  const rawGrade = cleanPatch.grade;
+
+  // borrar la nota.
+  if (rawGrade === '' || rawGrade === undefined || rawGrade === null) {
+    cleanPatch.grade = undefined;
+  } else {
+    const text = String(rawGrade).trim().replace(',', '.');
+
+    // números con hasta dos decimales.
+    if (!/^(?:\d+)(?:\.\d{1,2})?$/.test(text)) {
+      setToast('La nota debe ser un número de 0 a 10 con hasta 2 decimales');
+      return;
+    }
+
+    const grade = Number(text);
+
+    // rango general.
+    if (!Number.isFinite(grade) || grade < 0 || grade > 10) {
+      setToast('La nota debe estar entre 0 y 10');
+      return;
+    }
+
+    // materia aprobada, la nota mínima es 6.
+    const currentStatus =
+      state?.profiles?.[careerKey]?.subjects?.[code]?.status || 'pending';
+
+    if (currentStatus === 'passed' && grade < 6) {
+      setToast('Una materia aprobada debe tener una nota de 6 a 10');
+      return;
+    }
+
+    cleanPatch.grade = Number(grade.toFixed(2));
+  }
+}
+
+  // validación de fecha.
+  if ('date' in cleanPatch) {
+    const date = cleanPatch.date;
+
+    if (date !== '' && date !== undefined && date !== null) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date))) {
+        setToast('Fecha inválida');
+        return;
+      }
+
+      const parsed = new Date(`${date}T00:00:00`);
+
+      if (Number.isNaN(parsed.getTime())) {
+        setToast('Fecha inválida');
+        return;
+      }
+
+      cleanPatch.date = String(date);
+    } else {
+      cleanPatch.date = undefined;
+    }
+  }
+
+  setState(s => {
+    const current =
+      s.profiles?.[careerKey] ||
+      emptyProfile(DEFAULT_ORIENTATION[careerKey]);
+
+    return {
+      ...s,
+      profiles: {
+        ...s.profiles,
+        [careerKey]: {
+          ...current,
+          subjects: {
+            ...current.subjects,
+            [code]: {
+              ...current.subjects?.[code],
+              ...cleanPatch,
+            },
+          },
+        },
+      },
+    };
+  });
+}
 
   function setStatus(code, status) {
     const subject = byCode[code];
@@ -115,6 +206,20 @@ function App() {
       patch.grade = undefined;
       patch.date = undefined;
     }
+    if (status === 'passed') {
+    const currentGrade =
+    state?.profiles?.[careerKey]?.subjects?.[progressCode]?.grade;
+
+    if (
+      currentGrade !== undefined &&
+      currentGrade !== null &&
+      currentGrade !== '' &&
+      Number(currentGrade) < 6
+    )   {
+      setToast('No podés aprobar una materia con una nota menor a 6');
+      return;
+    }
+}
     patchSubject(progressCode, patch);
     setToast(`${subject?.name || code}: ${STATUS[status].label}`);
     if (previous !== status && status === 'passed') setSelected(null);
@@ -154,16 +259,22 @@ function App() {
     patchProfile({ milestones: { ...profile.milestones, [key]: !profile.milestones?.[key] } });
   }
 
+  // importar progreso
   function doImport(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    importState(file).then(data => {
-      if (!data?.career || !data?.profiles) throw new Error('Formato inválido');
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  importState(file)
+    .then(data => {
       setState(data);
-      setToast('Progreso importado');
-    }).catch(() => setToast('No se pudo importar ese archivo'));
-    e.target.value = '';
-  }
+      setToast('Progreso importado correctamente');
+    })
+    .catch(() => {
+      setToast('No se pudo importar: archivo inválido');
+    });
+
+  e.target.value = '';
+}
 
   function doReset() {
     if (!window.confirm(`¿Borrar todo tu progreso de ${career.label}?`)) return;
@@ -372,8 +483,44 @@ function SubjectModal({ subject, profile, byCode, getStatus, getEligibility, onS
     {eligibility.unlocked && status === 'pending' && <div className="unlock-box"><b>✓ Materia desbloqueada</b><span>Ya cumplís las correlativas para cursarla.</span></div>}
     <div className="modal-tags"><span>{subject.hours} h/sem</span><span>{subject.totalHours} h totales</span></div>
     <div className="modal-statuses"><b>Estado</b><div>{STATUS_ORDER.map(key => <button key={key} disabled={key !== 'pending' && !eligibility.unlocked} className={status === key ? `modal-status selected ${key}` : 'modal-status'} onClick={() => onStatus(subject.code, key)}>{STATUS[key].icon} {STATUS[key].label}</button>)}</div></div>
-    <div className="modal-fields"><label>Nota final<input type="number" min="0" max="10" step="0.01" value={s.grade ?? ''} onChange={e => onPatch(progressCode, { grade: e.target.value === '' ? undefined : Number(e.target.value) })} /></label><label>Fecha de aprobación<input type="date" value={s.date || ''} onChange={e => onPatch(progressCode, { date: e.target.value })} /></label></div>
-    <div className="requirements-grid"><div><h4>Para regularizar</h4>{req(subject.regularized)}</div><div><h4>Para aprobar</h4>{req(subject.approved)}</div></div>
+    
+    
+    <div className="modal-fields">
+    <label>
+    Nota final
+    <input
+      type="number"
+      min="0"
+      max="10"
+      step="0.01"
+      inputMode="decimal"
+      value={s.grade ?? ''}
+      disabled={!eligibility.unlocked}
+      title={!eligibility.unlocked ? 'Completá las correlativas para cargar una nota' : 'Nota de 0 a 10, hasta dos decimales'}
+      onChange={e =>
+        onPatch(progressCode, {
+          grade: e.target.value === '' ? undefined : e.target.value
+        })
+      }
+    />
+  </label>
+
+  <label>
+    Fecha de aprobación
+    <input
+      type="date"
+      value={s.date || ''}
+      disabled={!eligibility.unlocked}
+      title={!eligibility.unlocked ? 'Completá las correlativas para cargar una fecha' : 'Fecha de aprobación'}
+      onChange={e =>
+        onPatch(progressCode, {
+          date: e.target.value
+        })
+      }
+    />
+  </label>
+</div>
+    <div className="requirements-grid"><div><h4>Regularizadas</h4>{req(subject.regularized)}</div><div><h4>Aprobadas</h4>{req(subject.approved)}</div></div>
   </div></div>;
 }
 
@@ -415,9 +562,4 @@ function CareerPickerModal({ current, onSelect, onClose }) {
 }
 
 
-createRoot(document.getElementById('root')).render(
-  <>
-    <App />
-    <Analytics />
-  </>
-);
+createRoot(document.getElementById('root')).render(<App />);
