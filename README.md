@@ -4,7 +4,9 @@ Aplicación web para **seguir, organizar y visualizar el progreso académico** d
 
 ![Vista del Trackeador de Ingeniería](./public/preview.png)
 
-Este proyecto busca transformar el plan de estudios en una herramienta visual e interactiva, que permita saber rápidamente qué materias están aprobadas, cuáles están en curso, qué correlativas faltan y cuánto queda para completar la carrera.
+## Origen
+
+Este proyecto surgió de un seguimiento personal realizado en Excel. Con el mismo, se busca transformar el plan de estudios en una herramienta visual e interactiva, que permita saber rápidamente qué materias están aprobadas, cuáles están en curso, qué correlativas faltan y cuánto queda para completar la carrera.
 
 ---
 
