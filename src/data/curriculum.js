@@ -158,63 +158,192 @@ const ELECTRO_BASE = [
   m('02','Análisis Matemático I',1,1,8,120),
   m('03','Sistemas de Representación (Mod. I)',1,1,6,90),
   m('04','Fundamentos de Ingeniería',1,1,4,60),
-  m('05','Análisis Matemático II',1,2,6,90,['01','02']),
+
+  m('05','Análisis Matemático II',1,2,8,120,['01','02']),
   m('06','Física I',1,2,10,150,['01','02']),
   m('07','Química',1,2,6,90,['01']),
   m('08','Sistemas de Representación (Mod. II)',1,2,2,30,['03']),
-  m('11','Informática',2,3,6,90,['05'],['01','02']),
-  m('209','Complementos de Matemáticas Especiales',2,3,2,30,['05'],['01','02']),
-  m('210','Física del Calor',2,3,8,120,['06'],['01','02']),
-  m('213','Física Electromagnética y Atómica',2,3,8,120,['06'],['01','02']),
-  m('12','Estabilidad I',2,3,8,120,['05','06','08'],['01','02','03','04']),
-  m('214','Teoría de los Circuitos',2,4,8,120,['11','209','213'],['05','06']),
-  m('215','Resistencia de Materiales',2,4,8,120,['11','12'],['05','06']),
-  m('216','Termodinámica',2,4,6,90,['210'],['04','05']),
-  m('217','Seguridad y Organización Industrial',2,4,8,120,[],[],{sourceNote:'Las celdas de correlatividades de esta fila no resultan legibles en la copia consultada; no se inventan requisitos.'}),
-  m('318','Medidas Eléctricas',3,5,8,120,['214'],['209','213']),
-  m('319','Ciencia de los Materiales',3,5,6,90,['210','215'],['07']),
-  m('320','Mecánica Racional',3,5,8,120,['209'],['05','06','11']),
-  m('321','Metalurgia',3,5,8,120,['210','216'],['07']),
-  m('322','Mecánica de los Fluidos',3,6,10,150,['216','320'],['209']),
-  m('323','Economía y Administración de Empresas',3,6,4,60,[],[],{sourceNote:'Las celdas de correlatividades de esta fila no resultan legibles en la copia consultada; no se inventan requisitos.'}),
-  m('324','Máquinas Térmicas I',3,6,10,150,['216'],['11','210']),
-  m('425','Máquinas Hidráulicas',4,7,8,120,['322'],['320','216']),
-  m('426','Elementos de Máquinas',4,7,10,150,['321'],['215','320']),
-  m('427','Teoría de las Máquinas Eléctricas',4,7,10,150,['318'],['214']),
-  m('428','Tecnología Mecánica',4,8,8,120,['426'],['321']),
-  m('429','Electrónica I',4,8,6,90,['318'],['214']),
-  m('430','Instalaciones Eléctricas',4,8,6,90,['427'],['214']),
-  m('531','Automotores, Máquinas Agrícolas y Especiales',5,9,6,90,['324'],['216']),
-  m('532','Máquinas de Elevación y Transporte',5,9,8,120,['428','430'],['426']),
-  m('533','Ingeniería Legal',5,9,6,90,['428','430'],['426']),
-  m('534','Sistemas de Control',5,10,6,90,['429'],['318']),
-  m('535','Generación y Transporte de Energía Eléctrica',5,10,8,120,['430'],['427']),
-  m('536','Proyecto de Máquinas',5,10,10,150,['532'],['428']),
+
+  m('09','Análisis Matemático III',2,3,8,120,['05'],['01','02']),
+  m('10A','Física II',2,3,5,75,['06'],['01','02']),
+  m('10B','Física III',2,3,5,75,['06'],['01','02']),
+  m('11','Informática',2,3,6,90,['05']),
+  m('12','Estabilidad I',2,3,8,120,['05','06','08'],['01','02','03']),
+
+  m('209','Complementos de Matemáticas Especiales',2,4,4,60,['09'],['05']),
+  m('216','Termodinámica',2,4,6,90,['10A'],['04','05','06']),
+  m('214','Teoría de los Circuitos',2,4,6,90,['11','09','10B'],['05','06']),
+  m('215','Resistencia de Materiales',2,4,6,90,['12'],['05']),
+
+  m('318','Medidas Eléctricas',3,5,6,90,['214','209'],['10B']),
+  m('319','Ciencia de los Materiales',3,5,6,90,['215'],['07']),
+  m('320','Mecánica Racional',3,5,8,120,['209'],['06','09']),
+  m('323','Economía y Administración de Empresas',3,5,6,90,['209'],['09']),
+
+  m('322','Mecánica de los Fluidos',3,6,8,120,['216','320'],['209']),
+  m('324','Máquinas Térmicas I',3,6,8,120,['216'],['11','10A']),
+
+  // En el Anexo II aparece F38 como Elasticidad Aplicada.
+  // Se usa un identificador interno distinto para no colisionar
+  // con la F38 de la opción Fabricación.
+  m(
+    'F38-BASE',
+    'Elasticidad Aplicada',
+    3,
+    6,
+    6,
+    90,
+    ['319'],
+    ['215'],
+    { displayCode: 'F38' }
+  ),
+
+  m('425a','Máquinas Hidráulicas',4,7,4,60,['322'],['320','216'],{
+    displayCode:'425',
+    progressCode:'425',
+    sourceNote:'Primera aparición del código 425 en la Resolución 866/05. Comparte estado lógico con la segunda aparición.'
+  }),
+
+  m('426','Elementos de Máquinas',4,7,8,120,['319','F38-BASE'],['215','320']),
+  m('427','Teoría de las Máquinas Eléctricas',4,7,8,120,[],['209','214','318']),
+  m('429','Electrónica I',4,7,6,90,[],['209','214','318']),
+
+  m('425b','Máquinas Hidráulicas',4,8,4,60,['322'],['320','216'],{
+    displayCode:'425',
+    progressCode:'425',
+    sourceNote:'Segunda aparición del código 425 en la Resolución 866/05. Comparte estado lógico con la primera aparición.'
+  }),
+
+  m('428','Tecnología Mecánica',4,8,6,90,['426'],['319']),
+
+  m('430','Instalaciones Eléctricas y Luminotecnia',4,8,6,90,['427','429'],['318']),
+
+  // A37 aparece en el plan común del Anexo II.
+  m('A37','Oleoneumática',4,8,6,90,['322','427'],['214']),
+
+  m('217','Seguridad y Organización Industrial',4,8,6,90,['323'],['11','09','10A']),
+
+  m('533','Ingeniería Legal',5,9,6,90,['217'],['323']),
+  m('531','Automotores, Máquinas Agrícolas y Especiales',5,9,6,90,['429'],['324','216']),
+
+  m('534','Sistemas de Control',5,10,6,90,[],['318','429']),
+
+  m(
+    '535',
+    'Generación y Transporte de Energía Eléctrica',
+    5,
+    10,
+    6,
+    90,
+    ['430'],
+    ['427','429']
+  ),
+
+  m(
+    '536',
+    'Proyecto y Cálculo de Instalaciones Electromecánicas',
+    5,
+    10,
+    8,
+    120,
+    ['217','425','427','428','A37','430'],
+    ['429','323','426']
+  ),
 ];
-//orientaciones
+
 export const ELECTRO_ORIENTATIONS = {
   automatica: {
-    label: 'Automática', subtitle: 'Opción 1 · Automática',
+    label: 'Automática',
+    subtitle: 'Opción 1 · Automática',
     subjects: [
-      m('A37','Oleoneumática',4,8,6,90,['427'],['322']),
-      m('A38','Electrónica II',5,9,6,90,['429'],['318']),
-      m('A39','Programación Automática',5,10,6,90,['429']),
+      m(
+        'A38',
+        'Electrónica II',
+        5,
+        9,
+        6,
+        90,
+        ['427','429'],
+        ['318']
+      ),
+
+      m(
+        'A39',
+        'Programación Automática',
+        5,
+        10,
+        6,
+        90,
+        ['427','429'],
+        ['318']
+      ),
     ],
   },
+
   fabricacion: {
-    label: 'Fabricación', subtitle: 'Opción 2 · Fabricación',
+    label: 'Fabricación',
+    subtitle: 'Opción 2 · Fabricación',
     subjects: [
-      m('F37','Conocimiento de Materiales',4,8,6,90,[],['319','321']),
-      m('F38','Elasticidad y Plasticidad',5,9,6,90,[],['215','319']),
-      m('F39','Mecánica de Fabricación',5,10,6,90,['F38'],['428']),
+      m(
+        'F37',
+        'Conocimiento de Materiales',
+        4,
+        8,
+        6,
+        90,
+        ['F38-BASE'],
+        ['319']
+      ),
+
+      m(
+        'F38',
+        'Elasticidad y Plasticidad',
+        5,
+        9,
+        6,
+        90,
+        [],
+        ['215','319']
+      ),
+
+      m(
+        'F39',
+        'Mecánica de Fabricación',
+        5,
+        10,
+        6,
+        90,
+        ['F37','F38'],
+        ['319','428']
+      ),
     ],
   },
+
   termica: {
-    label: 'Térmica', subtitle: 'Opción 3 · Térmica',
+    label: 'Térmica',
+    subtitle: 'Opción 3 · Térmica',
     subjects: [
-      m('T37','Oleoneumática',4,8,6,90,['427'],['322']),
-      m('T38','Máquinas Térmicas II',5,9,6,90,[],['324']),
-      m('T39','Construcción y Ensayo de Máquinas Térmicas',5,10,6,90,['T38','426'],['324']),
+      m(
+        'T38',
+        'Máquinas Térmicas II',
+        5,
+        9,
+        6,
+        90,
+        [],
+        ['324']
+      ),
+
+      m(
+        'T39',
+        'Construcción y Ensayo de Máquinas Térmicas',
+        5,
+        10,
+        6,
+        90,
+        ['T38','426'],
+        ['324']
+      ),
     ],
   },
 };
@@ -291,7 +420,7 @@ export const ORIENTATION_KEYS = Object.fromEntries(Object.entries(CAREER_ORIENTA
 export function getCurriculum(career, orientation) {
   if (career === 'civil') return [...COMMON_CIVIL, ...(CIVIL_ORIENTATIONS[orientation]?.subjects || [])];
   if (career === 'electromecanica') {
-    const optCodes = new Set(['A37','A38','A39','F37','F38','F39','T37','T38','T39']);
+    const optCodes = new Set(['A38','A39','F37','F38','F39','T38','T39']);
     const base = ELECTRO_BASE.filter(s => !optCodes.has(s.code));
     return [...base, ...(ELECTRO_ORIENTATIONS[orientation]?.subjects || [])];
   }

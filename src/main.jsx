@@ -25,6 +25,7 @@ function App() {
   const [showFilters, setShowFilters] = useState(false);
   const [compact, setCompact] = useState(false);
   const [showCareerPicker, setShowCareerPicker] = useState(false);
+  const [justApproved, setJustApproved] = useState(null);
 
   const careerKey = state.career;
   const career = careerKey ? CAREERS[careerKey] : null;
@@ -47,6 +48,11 @@ function App() {
     const id = setTimeout(() => setToast(''), 1800);
     return () => clearTimeout(id);
   }, [toast]);
+  useEffect(() => {
+    if (!justApproved) return;
+    const id = setTimeout(() => setJustApproved(null), 900);
+    return () => clearTimeout(id);
+  }, [justApproved]);
 
   const getStatus = code => profile?.subjects?.[byCode[code]?.progressCode || code]?.status || 'pending';
   const getProgressCode = subjectOrCode => typeof subjectOrCode === 'string' ? (byCode[subjectOrCode]?.progressCode || subjectOrCode) : (subjectOrCode.progressCode || subjectOrCode.code);
@@ -222,7 +228,10 @@ if ('grade' in cleanPatch) {
 }
     patchSubject(progressCode, patch);
     setToast(`${subject?.name || code}: ${STATUS[status].label}`);
-    if (previous !== status && status === 'passed') setSelected(null);
+    if (previous !== status && status === 'passed') {
+      setSelected(null);
+      setJustApproved(progressCode);
+    }
   }
 
   function cycleStatus(code) {
@@ -352,11 +361,11 @@ if ('grade' in cleanPatch) {
             {showFilters && <FilterBar year={yearFilter} setYear={setYearFilter} term={termFilter} setTerm={setTermFilter} status={statusFilter} setStatus={setStatusFilter} />}
             <div className="legend"><span><i className="dot passed" />Aprobada</span><span><i className="dot current" />En curso</span><span><i className="dot regular" />Regular</span><span><i className="dot pending" />Pendiente</span></div>
 
-            <CareerGrid subjects={filtered} state={state} careerKey={careerKey} compact={compact} onStatus={setStatus} onCycle={cycleStatus} onOpen={setSelected} getEligibility={getEligibility} />
+            <CareerGrid subjects={filtered} state={state} careerKey={careerKey} compact={compact} onStatus={setStatus} onCycle={cycleStatus} onOpen={setSelected} getEligibility={getEligibility} justApproved={justApproved} />
           </>
         )}
 
-        {view === 'mapa' && <MapView subjects={subjects} profile={profile} onOpen={setSelected} getEligibility={getEligibility} />}
+        {view === 'mapa' && <MapView subjects={subjects} profile={profile} onOpen={setSelected} getEligibility={getEligibility} getStatus={getStatus} byCode={byCode} justApproved={justApproved} />}
         {view === 'stats' && <StatsView subjects={subjects} profile={profile} progress={progress} career={career} getStatus={getStatus} />}
         {view === 'settings' && <SettingsView state={state} career={career} careerKey={careerKey} orientation={orientation} orientationSet={orientationSet} onReset={doReset} onImport={doImport} onExport={() => exportState(state)} onChangeCareer={() => setShowCareerPicker(true)} />}
       </main>
@@ -388,7 +397,7 @@ function Welcome({ onSelect }) {
     { ...CAREERS.mecanica, icon: '⚙', eyebrow: 'MÁQUINAS · PRODUCCIÓN', note: 'Máquinas Agrícolas' },
   ];
   return <div className="welcome-screen">
-    <div className="welcome-shell">
+    <div className="welcome-shell tech-frame">
       <div className="welcome-brand"><span className="welcome-mark">FI</span><div><b>Trackeador de Ingeniería</b><small>FACULTAD DE INGENIERÍA · UNNE</small></div></div>
       <div className="welcome-kicker-row"><span className="kicker">SEGUIMIENTO ACADÉMICO</span><span className="welcome-pill">v5 · MULTICARRERA</span></div>
       <h1>Tu carrera. Tus correlativas. Tu progreso.</h1>
@@ -420,7 +429,7 @@ function FilterBar({ year, setYear, term, setTerm, status, setStatus }) {
   </div>;
 }
 
-function CareerGrid({ subjects, state, careerKey, compact, onStatus, onCycle, onOpen, getEligibility }) {
+function CareerGrid({ subjects, state, careerKey, compact, onStatus, onCycle, onOpen, getEligibility, justApproved }) {
   if (!subjects.length) return <div className="empty"><span>⌕</span><h3>No encontramos materias</h3><p>Probá con otro texto o limpiá los filtros.</p></div>;
   const years = [1,2,3,4,5];
   return <div className={`career-grid ${compact ? 'compact' : ''}`}>
@@ -432,7 +441,7 @@ function CareerGrid({ subjects, state, careerKey, compact, onStatus, onCycle, on
         {[1,2,3,4,5,6,7,8,9,10].map(term => {
           const arr = yearSubjects.filter(s => s.term === term);
           if (!arr.length) return null;
-          return <div className="term-section" key={term}><div className="term-title"><span>{term}° cuatrimestre</span><i>{arr.length}</i></div><div className="subject-grid">{arr.map(s => <SubjectCard key={`${s.code}-${s.term}`} subject={s} state={state} compact={compact} onStatus={onStatus} onCycle={onCycle} onOpen={onOpen} getEligibility={getEligibility} />)}</div></div>;
+          return <div className="term-section" key={term}><div className="term-title"><span>{term}° cuatrimestre</span><i>{arr.length}</i></div><div className="subject-grid">{arr.map(s => <SubjectCard key={`${s.code}-${s.term}`} subject={s} state={state} compact={compact} onStatus={onStatus} onCycle={onCycle} onOpen={onOpen} getEligibility={getEligibility} justApproved={justApproved} />)}</div></div>;
         })}
       </section>;
     })}
@@ -445,7 +454,7 @@ function byCodeLabel(code, state, subject) {
   return target?.displayCode || code;
 }
 
-function SubjectCard({ subject, state, compact, onStatus, onCycle, onOpen, getEligibility }) {
+function SubjectCard({ subject, state, compact, onStatus, onCycle, onOpen, getEligibility, justApproved }) {
   const progressCode = subject.progressCode || subject.code;
   const s = state.profiles?.[state.career]?.subjects?.[progressCode] || { status: 'pending' };
   const status = s.status || 'pending';
@@ -453,7 +462,9 @@ function SubjectCard({ subject, state, compact, onStatus, onCycle, onOpen, getEl
   const eligibility = getEligibility(subject);
   const missing = [...new Set([...eligibility.unmetApproved, ...eligibility.unmetRegularized])];
   const isLocked = !eligibility.unlocked && status === 'pending';
-  return <article className={`subject-card ${status} ${isLocked ? 'locked' : 'unlocked'} ${compact ? 'is-compact' : ''}`}>
+  const isPop = justApproved && justApproved === progressCode;
+  return <article className={`subject-card ${status} ${isLocked ? 'locked' : 'unlocked'} ${compact ? 'is-compact' : ''} ${isPop ? 'pop' : ''}`}>
+    {status === 'passed' && <span className="sello" aria-hidden="true">✓</span>}
     <button className="subject-main" onClick={() => onOpen(subject)}>
       <div className="card-top"><span className="code">{code}</span><span className="hours">{subject.totalHours} h</span></div>
       <h3>{subject.name}</h3>
@@ -472,9 +483,17 @@ function SubjectModal({ subject, profile, byCode, getStatus, getEligibility, onS
   const s = profile.subjects[progressCode] || { status: 'pending' };
   const eligibility = getEligibility(subject);
   const status = s.status || 'pending';
+  // Nota: se escribe en un borrador local y recién se valida/guarda al
+  // salir del campo. Si valida en cada tecla, tipear "10" queda
+  // trabado en el "1" cuando la materia ya está aprobada (exige >= 6).
+  const [gradeDraft, setGradeDraft] = useState(() => (s.grade != null ? String(s.grade) : ''));
+  useEffect(() => { setGradeDraft(s.grade != null ? String(s.grade) : ''); }, [s.grade]);
+  function commitGrade(value) {
+    onPatch(progressCode, { grade: value === '' ? undefined : value });
+  }
   const req = codes => codes?.length ? <div className="req-list">{codes.map(code => { const target = byCode[code]; const logical = target?.progressCode || code; const st = getStatus(logical); return <span key={code}><b>{target?.displayCode || code}</b><em>{target?.name || 'Materia del plan'}</em><small className={`req-status ${st}`}>{STATUS[st].label}</small></span>; })}</div> : <p className="muted">Sin correlativas.</p>;
   const displayCode = subject.displayCode || subject.code;
-  return <div className="modal-backdrop" onMouseDown={e => e.target === e.currentTarget && onClose()}><div className="modal">
+  return <div className="modal-backdrop" onMouseDown={e => e.target === e.currentTarget && onClose()}><div className="modal tech-frame">
     <button className="modal-close" onClick={onClose}>×</button>
     <div className="modal-kicker">{displayCode} · {subject.year}° año · {subject.term}° cuatrimestre</div>
     <h2>{subject.name}</h2>
@@ -489,19 +508,14 @@ function SubjectModal({ subject, profile, byCode, getStatus, getEligibility, onS
     <label>
     Nota final
     <input
-      type="number"
-      min="0"
-      max="10"
-      step="0.01"
+      type="text"
       inputMode="decimal"
-      value={s.grade ?? ''}
+      value={gradeDraft}
       disabled={!eligibility.unlocked}
       title={!eligibility.unlocked ? 'Completá las correlativas para cargar una nota' : 'Nota de 0 a 10, hasta dos decimales'}
-      onChange={e =>
-        onPatch(progressCode, {
-          grade: e.target.value === '' ? undefined : e.target.value
-        })
-      }
+      onChange={e => setGradeDraft(e.target.value)}
+      onBlur={e => commitGrade(e.target.value)}
+      onKeyDown={e => { if (e.key === 'Enter') { commitGrade(e.target.value); e.target.blur(); } }}
     />
   </label>
 
@@ -524,30 +538,183 @@ function SubjectModal({ subject, profile, byCode, getStatus, getEligibility, onS
   </div></div>;
 }
 
-function MapView({ subjects, profile, onOpen, getEligibility }) {
-  const grouped = [1,2,3,4,5].map(year => ({ year, list: subjects.filter(s => s.year === year) }));
-  return <section className="page-section"><div className="section-head"><div><div className="kicker">DEPENDENCIAS</div><h2>Mapa de correlativas</h2><p>Vista general del plan. Las materias se colorean según el estado que vos registres.</p></div></div><div className="map-flow">{grouped.map(g => <div className="map-year" key={g.year}><div className="map-year-label">{g.year}°</div><div className="map-nodes">{g.list.map(s => {const st = profile.subjects[s.progressCode || s.code]?.status || 'pending'; const eligibility = getEligibility(s); return <button key={`${s.code}-${s.term}`} className={`map-node ${st} ${!eligibility.unlocked && st === 'pending' ? 'locked' : ''}`} onClick={() => onOpen(s)}><span>{s.displayCode || s.code}</span><b>{s.name}</b><small>{st === 'pending' && !eligibility.unlocked ? `🔒 Faltan ${[...new Set([...eligibility.unmetApproved, ...eligibility.unmetRegularized])].length}` : STATUS[st].label}</small></button>})}</div></div>)}</div></section>;
+/* ---------- Mapa de correlativas: plano con nodos y conexiones ---------- */
+const MAP_NODE_W = 176;
+const MAP_NODE_H = 60;
+const MAP_GAP_X = 68;
+const MAP_GAP_Y = 12;
+const MAP_TERM_GAP = 14;
+const MAP_HEADER_H = 30;
+const MAP_PAD = 18;
+
+function buildMapLayout(subjects) {
+  const positions = {};
+  let maxHeight = 0;
+  for (let year = 1; year <= 5; year++) {
+    const list = subjects.filter(s => s.year === year).slice().sort((a, b) => a.term - b.term);
+    let y = MAP_HEADER_H + MAP_PAD;
+    let prevTerm = null;
+    list.forEach(s => {
+      if (prevTerm !== null && s.term !== prevTerm) y += MAP_TERM_GAP;
+      const key = `${s.code}-${s.term}`;
+      positions[key] = { x: MAP_PAD + (year - 1) * (MAP_NODE_W + MAP_GAP_X), y, subject: s };
+      y += MAP_NODE_H + MAP_GAP_Y;
+      prevTerm = s.term;
+    });
+    if (y > maxHeight) maxHeight = y;
+  }
+  const width = MAP_PAD * 2 + 5 * MAP_NODE_W + 4 * MAP_GAP_X;
+  const height = Math.max(maxHeight + MAP_PAD, 320);
+  return { positions, width, height };
+}
+
+function buildMapEdges(subjects, positions, byCode, getStatus) {
+  const edges = [];
+  subjects.forEach(dep => {
+    const depKey = `${dep.code}-${dep.term}`;
+    if (!positions[depKey]) return;
+    (dep.regularized || []).forEach(refCode => {
+      const src = byCode[refCode];
+      if (!src) return;
+      const srcKey = `${src.code}-${src.term}`;
+      if (!positions[srcKey] || srcKey === depKey) return;
+      edges.push({ id: `${srcKey}=>${depKey}:r`, srcKey, depKey, type: 'reg', met: ['regular', 'passed'].includes(getStatus(refCode)) });
+    });
+    (dep.approved || []).forEach(refCode => {
+      const src = byCode[refCode];
+      if (!src) return;
+      const srcKey = `${src.code}-${src.term}`;
+      if (!positions[srcKey] || srcKey === depKey) return;
+      edges.push({ id: `${srcKey}=>${depKey}:a`, srcKey, depKey, type: 'app', met: getStatus(refCode) === 'passed' });
+    });
+  });
+  return edges;
+}
+
+function mapEdgePath(x1, y1, x2, y2, sameColumn) {
+  if (sameColumn) {
+    // La correlativa es del mismo año: en vez de cruzar por debajo de
+    // las otras tarjetas de la columna, arquea hacia afuera, sobre el
+    // hueco entre columnas, para que la línea quede siempre visible.
+    const bulge = x1 + 26;
+    return `M ${x1} ${y1} C ${bulge} ${y1}, ${bulge} ${y2}, ${x2} ${y2}`;
+  }
+  const mx = (x1 + x2) / 2;
+  return `M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`;
+}
+
+function MapView({ subjects, onOpen, getEligibility, getStatus, byCode, justApproved }) {
+  const [hoveredKey, setHoveredKey] = useState(null);
+  // Instrucciones distintas según el dispositivo (esto es sólo texto,
+  // no decide el comportamiento real: ver más abajo).
+  const canHover = useMemo(() => typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches, []);
+  const layout = useMemo(() => buildMapLayout(subjects), [subjects]);
+  const edges = useMemo(() => buildMapEdges(subjects, layout.positions, byCode, getStatus), [subjects, layout, byCode, getStatus]);
+  const relatedKeys = useMemo(() => {
+    if (!hoveredKey) return null;
+    const set = new Set([hoveredKey]);
+    edges.forEach(e => { if (e.srcKey === hoveredKey || e.depKey === hoveredKey) { set.add(e.srcKey); set.add(e.depKey); } });
+    return set;
+  }, [hoveredKey, edges]);
+
+  // No dependemos de detectar "es celular": con mouse, pasar por encima
+  // (mouseenter) ya deja resaltada la materia antes de que llegue el
+  // click, así que el click la abre directo. En pantalla táctil no hay
+  // paso previo de "hover", así que el primer toque sólo resalta (deja
+  // hoveredKey === key) y recién el segundo click sobre esa misma
+  // materia la abre. Funciona igual en los dos casos sin adivinar el
+  // dispositivo.
+  function handleNodeClick(key, subject) {
+    if (hoveredKey === key) onOpen(subject); else setHoveredKey(key);
+  }
+
+  return <section className="page-section">
+    <div className="section-head">
+      <div className="kicker">MAPA</div>
+      <h2>El plano de tu carrera</h2>
+      <p>{canHover
+        ? 'Cada materia conectada con lo que necesita para desbloquearse. Pasá el mouse sobre una para seguir sus correlativas, y tocá cualquiera para ver el detalle.'
+        : 'Tocá una materia para resaltar sus correlativas, y volvé a tocarla para ver el detalle completo.'}</p>
+    </div>
+    <div className="map-legend">
+      <span><i className="map-legend-line met" />Correlativa cumplida</span>
+      <span><i className="map-legend-line" />Correlativa pendiente</span>
+      <span><i className="map-legend-line dashed" />Con regularizarla alcanza</span>
+    </div>
+    <div className="map-scroll tech-frame">
+      <div
+        className="map-canvas"
+        style={{ width: layout.width, height: layout.height }}
+        onClick={e => { if (e.target === e.currentTarget) setHoveredKey(null); }}
+      >
+        <div className="map-years">
+          {[1, 2, 3, 4, 5].map(year => <span key={year} style={{ left: MAP_PAD + (year - 1) * (MAP_NODE_W + MAP_GAP_X), width: MAP_NODE_W }}>{year}° año</span>)}
+        </div>
+        <svg className="map-svg" width={layout.width} height={layout.height}>
+          {edges.map(e => {
+            const src = layout.positions[e.srcKey];
+            const dep = layout.positions[e.depKey];
+            if (!src || !dep) return null;
+            const sameColumn = src.x === dep.x;
+            const x1 = src.x + MAP_NODE_W;
+            const y1 = src.y + MAP_NODE_H / 2;
+            const x2 = sameColumn ? x1 : dep.x;
+            const y2 = dep.y + MAP_NODE_H / 2;
+            const related = relatedKeys && (e.srcKey === hoveredKey || e.depKey === hoveredKey);
+            const dim = relatedKeys && !related;
+            return <path key={e.id} d={mapEdgePath(x1, y1, x2, y2, sameColumn)} className={`map-edge ${e.type} ${e.met ? 'met' : ''} ${related ? 'is-related' : ''} ${dim ? 'is-dim' : ''}`} />;
+          })}
+        </svg>
+        {Object.entries(layout.positions).map(([key, pos]) => {
+          const subject = pos.subject;
+          const progressCode = subject.progressCode || subject.code;
+          const status = getStatus(subject.code);
+          const eligibility = getEligibility(subject);
+          const locked = status === 'pending' && !eligibility.unlocked;
+          const related = relatedKeys && relatedKeys.has(key);
+          const dim = relatedKeys && !related;
+          const isPop = justApproved && justApproved === progressCode;
+          return <button
+            key={key}
+            className={`map-node ${status} ${locked ? 'locked' : ''} ${related ? 'is-related' : ''} ${dim ? 'is-dim' : ''} ${isPop ? 'pop' : ''}`}
+            style={{ left: pos.x, top: pos.y, width: MAP_NODE_W, height: MAP_NODE_H }}
+            onMouseEnter={() => setHoveredKey(key)}
+            onMouseLeave={() => setHoveredKey(null)}
+            onFocus={() => setHoveredKey(key)}
+            onBlur={() => setHoveredKey(null)}
+            onClick={() => handleNodeClick(key, subject)}
+          >
+            {status === 'passed' && <span className="sello" aria-hidden="true">✓</span>}
+            <span className="map-node-top"><b>{subject.displayCode || subject.code}</b><small>{subject.term}°C</small></span>
+            <span className="map-node-name">{subject.name}</span>
+            {locked && <span className="map-node-lock" aria-hidden="true">🔒</span>}
+            {!canHover && hoveredKey === key && <span className="map-node-hint">Tocá de nuevo para abrir</span>}
+          </button>;
+        })}
+      </div>
+    </div>
+  </section>;
 }
 
 function StatsView({ subjects, profile, progress, career, getStatus }) {
   const yearStats = [1,2,3,4,5].map(year => { const list = subjects.filter(s => s.year === year); const passed = list.filter(s => getStatus(s.code) === 'passed').length; return { year, total: list.length, passed, percent: list.length ? Math.round((passed/list.length)*100) : 0 }; });
   const grades = subjects.filter(s => typeof profile.subjects[s.progressCode || s.code]?.grade === 'number').sort((a,b) => (profile.subjects[b.progressCode || b.code]?.grade ?? -1) - (profile.subjects[a.progressCode || a.code]?.grade ?? -1));
   const pending = subjects.filter(s => getStatus(s.code) === 'pending').length;
-  return <section className="page-section"><div className="stats-hero"><div><div className="kicker">TU PROGRESO</div><h2>{progress.percent}% de carrera completada</h2><p>{progress.hoursPassed.toLocaleString('es-AR')} horas de asignaturas aprobadas sobre las {career.requirements.hours.toLocaleString('es-AR')} horas indicadas para el plan.</p></div><div className="big-number">{progress.avg}<small>promedio</small></div></div><div className="year-stats">{yearStats.map(s => <div className="year-stat" key={s.year}><div><b>{s.year}° año</b><span>{s.passed}/{s.total}</span></div><div className="bar"><i style={{ width: `${s.percent}%` }} /></div></div>)}</div><div className="stats-columns"><div className="panel"><div className="panel-head"><div><div className="kicker">RESUMEN</div><h3>Estado de tu carrera</h3></div></div><div className="summary-list"><div><span>Aprobadas</span><b>{progress.passed}</b></div><div><span>Regularizadas</span><b>{progress.regular}</b></div><div><span>En curso</span><b>{progress.current}</b></div><div><span>Pendientes</span><b>{pending}</b></div></div></div><div className="panel"><div className="panel-head"><div><div className="kicker">CALIFICACIONES</div><h3>Notas cargadas</h3></div></div>{grades.length ? <div className="grades">{grades.map(s => <div key={s.code}><span>{s.displayCode || s.code}</span><b>{s.name}</b><strong>{profile.subjects[s.progressCode || s.code].grade}</strong></div>)}</div> : <p className="muted">Todavía no cargaste notas.</p>}</div></div></section>;
+  return <section className="page-section"><div className="stats-hero"><div><div className="kicker">TU PROGRESO</div><h2>{progress.percent}% de carrera completada</h2><p>{progress.hoursPassed.toLocaleString('es-AR')} horas de asignaturas aprobadas sobre las {career.requirements.hours.toLocaleString('es-AR')} horas indicadas para el plan.</p></div><div className="big-number">{progress.avg}<small>promedio</small></div></div><div className="year-stats">{yearStats.map(s => <div className="year-stat" key={s.year}><div><b>{s.year}° año</b><span>{s.passed}/{s.total}</span></div><div className="bar"><i style={{ width: `${s.percent}%` }} /></div></div>)}</div><div className="stats-columns"><div className="panel tech-frame"><div className="panel-head"><div><div className="kicker">RESUMEN</div><h3>Estado de tu carrera</h3></div></div><div className="summary-list"><div><span>Aprobadas</span><b>{progress.passed}</b></div><div><span>Regularizadas</span><b>{progress.regular}</b></div><div><span>En curso</span><b>{progress.current}</b></div><div><span>Pendientes</span><b>{pending}</b></div></div></div><div className="panel tech-frame"><div className="panel-head"><div><div className="kicker">CALIFICACIONES</div><h3>Notas cargadas</h3></div></div>{grades.length ? <div className="grades">{grades.map(s => <div key={s.code}><span>{s.displayCode || s.code}</span><b>{s.name}</b><strong>{profile.subjects[s.progressCode || s.code].grade}</strong></div>)}</div> : <p className="muted">Todavía no cargaste notas.</p>}</div></div></section>;
 }
 
 function SettingsView({ state, career, careerKey, orientation, orientationSet, onReset, onImport, onExport, onChangeCareer }) {
   return <section className="page-section settings-page">
-    <div className="panel"><div className="kicker">DATOS</div><h2>Tu progreso queda guardado en este navegador.</h2><p>Exportá una copia JSON para respaldarlo o pasarlo a otra computadora. Importarlo recupera los perfiles, estados, notas y fechas.</p><div className="settings-actions"><button className="primary" onClick={onExport}>↓ Exportar progreso</button><label className="secondary">↑ Importar progreso<input type="file" accept="application/json" onChange={onImport} /></label><button className="danger" onClick={onReset}>Borrar progreso de esta carrera</button></div></div>
-    <div className="panel"><div className="kicker">CARRERA ACTIVA</div><h2>{career.label}</h2><p>{career.source}</p><div className="info-grid"><div><span>Carga horaria</span><b>{career.requirements.hours.toLocaleString('es-AR')} h</b></div><div><span>PPS</span><b>{career.requirements.pps} h reloj</b></div><div><span>{careerKey === 'civil' ? 'Orientación' : 'Opción'}</span><b>{orientationSet[orientation]?.label}</b></div><div><span>Inglés Técnico</span><b>Antes de 4° año</b></div></div><p className="note">{career.requirements.english}.</p><button className="secondary change-career" onClick={onChangeCareer}>↔ Cambiar carrera</button></div>
-    <div className="panel"><div className="kicker">CRÉDITOS</div><h2>Proyecto independiente</h2><p>Trackeador desarrollado por <b>Santino Cuadra</b> para facilitar el seguimiento personal de los planes de estudio de la Facultad de Ingeniería de la UNNE.</p><p className="note">No es un sitio oficial de la UNNE. Los planes y correlatividades deben contrastarse con la documentación académica vigente.</p></div>
-    <div className="panel"><div className="kicker">PLAN</div><h2>¿Cómo se guarda?</h2><p>El progreso se almacena localmente en el navegador. Cada estudiante tiene su propio seguimiento. Para moverlo entre dispositivos, usá Exportar e Importar.</p></div>
+    <div className="panel tech-frame"><div className="kicker">DATOS</div><h2>Tu progreso queda guardado en este navegador.</h2><p>Exportá una copia JSON para respaldarlo o pasarlo a otra computadora. Importarlo recupera los perfiles, estados, notas y fechas.</p><div className="settings-actions"><button className="primary" onClick={onExport}>↓ Exportar progreso</button><label className="secondary">↑ Importar progreso<input type="file" accept="application/json" onChange={onImport} /></label><button className="danger" onClick={onReset}>Borrar progreso de esta carrera</button></div></div>
+    <div className="panel tech-frame"><div className="kicker">CARRERA ACTIVA</div><h2>{career.label}</h2><p>{career.source}</p><div className="info-grid"><div><span>Carga horaria</span><b>{career.requirements.hours.toLocaleString('es-AR')} h</b></div><div><span>PPS</span><b>{career.requirements.pps} h reloj</b></div><div><span>{careerKey === 'civil' ? 'Orientación' : 'Opción'}</span><b>{orientationSet[orientation]?.label}</b></div><div><span>Inglés Técnico</span><b>Antes de 4° año</b></div></div><p className="note">{career.requirements.english}.</p><button className="secondary change-career" onClick={onChangeCareer}>↔ Cambiar carrera</button></div>
+    <div className="panel tech-frame"><div className="kicker">CRÉDITOS</div><h2>Proyecto independiente</h2><p>Trackeador desarrollado por <b>Santino Cuadra</b> para facilitar el seguimiento personal de los planes de estudio de la Facultad de Ingeniería de la UNNE.</p><p className="note">No es un sitio oficial de la UNNE. Los planes y correlatividades deben contrastarse con la documentación académica vigente.</p></div>
+    <div className="panel tech-frame"><div className="kicker">PLAN</div><h2>¿Cómo se guarda?</h2><p>El progreso se almacena localmente en el navegador. Cada estudiante tiene su propio seguimiento. Para moverlo entre dispositivos, usá Exportar e Importar.</p></div>
   </section>;
 }
 
 function CareerPickerModal({ current, onSelect, onClose }) {
   return <div className="modal-backdrop" onMouseDown={e => e.target === e.currentTarget && onClose()}>
-    <div className="modal career-picker-modal">
+    <div className="modal career-picker-modal tech-frame">
       <button className="modal-close" onClick={onClose}>×</button>
       <div className="kicker">CARRERA</div>
       <h2>Seleccioná la carrera</h2>
