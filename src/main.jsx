@@ -483,14 +483,6 @@ function SubjectModal({ subject, profile, byCode, getStatus, getEligibility, onS
   const s = profile.subjects[progressCode] || { status: 'pending' };
   const eligibility = getEligibility(subject);
   const status = s.status || 'pending';
-  // Nota: se escribe en un borrador local y recién se valida/guarda al
-  // salir del campo. Si valida en cada tecla, tipear "10" queda
-  // trabado en el "1" cuando la materia ya está aprobada (exige >= 6).
-  const [gradeDraft, setGradeDraft] = useState(() => (s.grade != null ? String(s.grade) : ''));
-  useEffect(() => { setGradeDraft(s.grade != null ? String(s.grade) : ''); }, [s.grade]);
-  function commitGrade(value) {
-    onPatch(progressCode, { grade: value === '' ? undefined : value });
-  }
   const req = codes => codes?.length ? <div className="req-list">{codes.map(code => { const target = byCode[code]; const logical = target?.progressCode || code; const st = getStatus(logical); return <span key={code}><b>{target?.displayCode || code}</b><em>{target?.name || 'Materia del plan'}</em><small className={`req-status ${st}`}>{STATUS[st].label}</small></span>; })}</div> : <p className="muted">Sin correlativas.</p>;
   const displayCode = subject.displayCode || subject.code;
   return <div className="modal-backdrop" onMouseDown={e => e.target === e.currentTarget && onClose()}><div className="modal tech-frame">
@@ -508,14 +500,19 @@ function SubjectModal({ subject, profile, byCode, getStatus, getEligibility, onS
     <label>
     Nota final
     <input
-      type="text"
+      type="number"
+      min="0"
+      max="10"
+      step="0.01"
       inputMode="decimal"
-      value={gradeDraft}
+      value={s.grade ?? ''}
       disabled={!eligibility.unlocked}
       title={!eligibility.unlocked ? 'Completá las correlativas para cargar una nota' : 'Nota de 0 a 10, hasta dos decimales'}
-      onChange={e => setGradeDraft(e.target.value)}
-      onBlur={e => commitGrade(e.target.value)}
-      onKeyDown={e => { if (e.key === 'Enter') { commitGrade(e.target.value); e.target.blur(); } }}
+      onChange={e =>
+        onPatch(progressCode, {
+          grade: e.target.value === '' ? undefined : e.target.value
+        })
+      }
     />
   </label>
 
@@ -605,8 +602,9 @@ function mapEdgePath(x1, y1, x2, y2, sameColumn) {
 
 function MapView({ subjects, onOpen, getEligibility, getStatus, byCode, justApproved }) {
   const [hoveredKey, setHoveredKey] = useState(null);
-  // Instrucciones distintas según el dispositivo (esto es sólo texto,
-  // no decide el comportamiento real: ver más abajo).
+  // En celular no hay "hover": el primer toque marca la materia y
+  // resalta sus correlativas; recién el segundo toque sobre la misma
+  // abre el detalle. Con mouse, el click abre directo, como siempre.
   const canHover = useMemo(() => typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches, []);
   const layout = useMemo(() => buildMapLayout(subjects), [subjects]);
   const edges = useMemo(() => buildMapEdges(subjects, layout.positions, byCode, getStatus), [subjects, layout, byCode, getStatus]);
@@ -617,14 +615,8 @@ function MapView({ subjects, onOpen, getEligibility, getStatus, byCode, justAppr
     return set;
   }, [hoveredKey, edges]);
 
-  // No dependemos de detectar "es celular": con mouse, pasar por encima
-  // (mouseenter) ya deja resaltada la materia antes de que llegue el
-  // click, así que el click la abre directo. En pantalla táctil no hay
-  // paso previo de "hover", así que el primer toque sólo resalta (deja
-  // hoveredKey === key) y recién el segundo click sobre esa misma
-  // materia la abre. Funciona igual en los dos casos sin adivinar el
-  // dispositivo.
   function handleNodeClick(key, subject) {
+    if (canHover) { onOpen(subject); return; }
     if (hoveredKey === key) onOpen(subject); else setHoveredKey(key);
   }
 
@@ -639,13 +631,13 @@ function MapView({ subjects, onOpen, getEligibility, getStatus, byCode, justAppr
     <div className="map-legend">
       <span><i className="map-legend-line met" />Correlativa cumplida</span>
       <span><i className="map-legend-line" />Correlativa pendiente</span>
-      <span><i className="map-legend-line dashed" />Con regularizarla alcanza</span>
+      <span><i className="map-legend-line dashed" />Regular</span>
     </div>
     <div className="map-scroll tech-frame">
       <div
         className="map-canvas"
         style={{ width: layout.width, height: layout.height }}
-        onClick={e => { if (e.target === e.currentTarget) setHoveredKey(null); }}
+        onClick={e => { if (!canHover && e.target === e.currentTarget) setHoveredKey(null); }}
       >
         <div className="map-years">
           {[1, 2, 3, 4, 5].map(year => <span key={year} style={{ left: MAP_PAD + (year - 1) * (MAP_NODE_W + MAP_GAP_X), width: MAP_NODE_W }}>{year}° año</span>)}
@@ -678,17 +670,17 @@ function MapView({ subjects, onOpen, getEligibility, getStatus, byCode, justAppr
             key={key}
             className={`map-node ${status} ${locked ? 'locked' : ''} ${related ? 'is-related' : ''} ${dim ? 'is-dim' : ''} ${isPop ? 'pop' : ''}`}
             style={{ left: pos.x, top: pos.y, width: MAP_NODE_W, height: MAP_NODE_H }}
-            onMouseEnter={() => setHoveredKey(key)}
-            onMouseLeave={() => setHoveredKey(null)}
+            onMouseEnter={() => canHover && setHoveredKey(key)}
+            onMouseLeave={() => canHover && setHoveredKey(null)}
             onFocus={() => setHoveredKey(key)}
-            onBlur={() => setHoveredKey(null)}
+            onBlur={() => canHover && setHoveredKey(null)}
             onClick={() => handleNodeClick(key, subject)}
           >
             {status === 'passed' && <span className="sello" aria-hidden="true">✓</span>}
             <span className="map-node-top"><b>{subject.displayCode || subject.code}</b><small>{subject.term}°C</small></span>
             <span className="map-node-name">{subject.name}</span>
             {locked && <span className="map-node-lock" aria-hidden="true">🔒</span>}
-            {!canHover && hoveredKey === key && <span className="map-node-hint">Tocá de nuevo para abrir</span>}
+            {!canHover && related && hoveredKey === key && <span className="map-node-hint">Tocá de nuevo para abrir</span>}
           </button>;
         })}
       </div>
@@ -705,9 +697,9 @@ function StatsView({ subjects, profile, progress, career, getStatus }) {
 
 function SettingsView({ state, career, careerKey, orientation, orientationSet, onReset, onImport, onExport, onChangeCareer }) {
   return <section className="page-section settings-page">
-    <div className="panel tech-frame"><div className="kicker">DATOS</div><h2>Tu progreso queda guardado en este navegador.</h2><p>Exportá una copia JSON para respaldarlo o pasarlo a otra computadora. Importarlo recupera los perfiles, estados, notas y fechas.</p><div className="settings-actions"><button className="primary" onClick={onExport}>↓ Exportar progreso</button><label className="secondary">↑ Importar progreso<input type="file" accept="application/json" onChange={onImport} /></label><button className="danger" onClick={onReset}>Borrar progreso de esta carrera</button></div></div>
+    <div className="panel tech-frame"><div className="kicker">DATOS</div><h2>Tu progreso queda guardado en este navegador.</h2><p>Podés exportar una copia JSON para respaldarlo o pasarlo a otra computadora. Importarlo recupera los perfiles, estados, notas y fechas.</p><div className="settings-actions"><button className="primary" onClick={onExport}>↓ Exportar progreso</button><label className="secondary">↑ Importar progreso<input type="file" accept="application/json" onChange={onImport} /></label><button className="danger" onClick={onReset}>Borrar progreso de esta carrera</button></div></div>
     <div className="panel tech-frame"><div className="kicker">CARRERA ACTIVA</div><h2>{career.label}</h2><p>{career.source}</p><div className="info-grid"><div><span>Carga horaria</span><b>{career.requirements.hours.toLocaleString('es-AR')} h</b></div><div><span>PPS</span><b>{career.requirements.pps} h reloj</b></div><div><span>{careerKey === 'civil' ? 'Orientación' : 'Opción'}</span><b>{orientationSet[orientation]?.label}</b></div><div><span>Inglés Técnico</span><b>Antes de 4° año</b></div></div><p className="note">{career.requirements.english}.</p><button className="secondary change-career" onClick={onChangeCareer}>↔ Cambiar carrera</button></div>
-    <div className="panel tech-frame"><div className="kicker">CRÉDITOS</div><h2>Proyecto independiente</h2><p>Trackeador desarrollado por <b>Santino Cuadra</b> para facilitar el seguimiento personal de los planes de estudio de la Facultad de Ingeniería de la UNNE.</p><p className="note">No es un sitio oficial de la UNNE. Los planes y correlatividades deben contrastarse con la documentación académica vigente.</p></div>
+    <div className="panel tech-frame"><div className="kicker">CRÉDITOS</div><h2>Proyecto independiente</h2><p>Tracker desarrollado por <b>Santino Cuadra</b> para facilitar el seguimiento personal de los planes de estudio de la Facultad de Ingeniería de la UNNE.</p><p className="note">NO es un sitio oficial de la UNNE. Los planes y correlatividades deben contrastarse con la documentación académica vigente.</p></div>
     <div className="panel tech-frame"><div className="kicker">PLAN</div><h2>¿Cómo se guarda?</h2><p>El progreso se almacena localmente en el navegador. Cada estudiante tiene su propio seguimiento. Para moverlo entre dispositivos, usá Exportar e Importar.</p></div>
   </section>;
 }
