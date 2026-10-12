@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import './styles.css';
 import { CAREERS, CAREER_ORIENTATIONS, getCurriculum, ORIENTATION_KEYS } from './data/curriculum';
 import { emptyProfile, exportState, importState, loadState, saveState } from './lib/storage';
-import { SpeedInsights } from "@vercel/speed-insights/next";
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 const STATUS = {
   pending: { label: 'Pendiente', short: 'P', icon: '○' },
@@ -387,6 +387,7 @@ if ('grade' in cleanPatch) {
         </a>
         <small>No es un sitio oficial de la UNNE.</small>
       </footer>
+      <SpeedInsights />
     </div>
   );
 }
